@@ -13,10 +13,11 @@ class ImageAcquisition(Thread):
     camera = PiCamera()
     rawCapture = None
     done = False
-    init_learn = False
+    learningMode = False
 
-    def __init__(self,res,framerate):
+    def __init__(self,res,framerate,learningActive):
        
+        self.learningMode = learningActive #Trigger variable to start learning mode -> stores images in jpeg format until set to False
         self.camera.resolution = res
         self.camera.framerate = framerate
         self.rawCapture = PiRGBArray(self.camera, size=res)
@@ -25,20 +26,28 @@ class ImageAcquisition(Thread):
     def run(self):
         self.done = False
         try:
-            for frame in self.camera.capture_continuous(self.rawCapture,format='bgr', use_video_port=True):
-                #while self.imageWriteLock is True:
-                    #pass
-                #self.imageWriteLock = True
-                #print("in continuous capture")
-                self.lastImage = frame.array
-                #self.imageWriteLock = False
-                self.rawCapture.truncate(0)
-                if self.done is True:
-                    break;
+            #This case shall be used for neural network learning -> shall store images at the specified location, as long as in this mode.
+            if self.learningMode == True:
+                for i, frame in enumerate(self.camera.capture_continuous('cameraCapture/' + '{timestamp}.jpg',format='jpeg', use_video_port=True)):
+                    if self.done is True:
+                        break;
+                    pass
+            #This case shall be used for online imageProcessing, that will decide when to steer and when to accelerate.
+            if self.learningMode == False:        
+                for frame in self.camera.capture_continuous(self.rawCapture,format='bgr', use_video_port=True):
+                    #while self.imageWriteLock is True:
+                        #pass
+                    #self.imageWriteLock = True
+                    #print("in continuous capture")
+                    self.lastImage = frame.array
+                    #self.imageWriteLock = False
+                    self.rawCapture.truncate(0)
+                    if self.done is True:
+                        break;
                 
         except:
             print(traceback.format_exc())
-            cv2.imshow("crashed on image",self.lastImage)
+            #cv2.imshow("crashed on image",self.lastImage)
             self.stop()
 
     def stop(self):
@@ -80,17 +89,16 @@ class ImageAcquisition(Thread):
 
 
 #This is the function variant of the Thread from above
-#def recordToLearn(init_learn):
-#    camera = PiCamera()
-#    if self.init_learn == True:
-#        self.camera.resolution = (640,480)
-#        self.camera.framerate = 40
-#        try:
-#            for i, frame in enumerate(self.camera.capture_continuous('cameraCapture/' + '{i}.jpg', format='jpeg', use_video_port=True)):
-#                print('Testing')
-#                if self.init_learn is False:
-#                    break;
-#                
-#        except:
-#            print(traceback.format_exc())
-#            self.stop()
+def recordToLearn(init_learn):
+    camera = PiCamera()
+    if init_learn == True:
+        camera.resolution = (640,480)
+        camera.framerate = 80
+        try:
+            for i, frame in enumerate(camera.capture_continuous('cameraCapture/' + '{i}.jpg', format='jpeg', use_video_port=True)):
+                print('Testing')
+                if init_learn is False:
+                    break;
+                
+        except:
+            print(traceback.format_exc())

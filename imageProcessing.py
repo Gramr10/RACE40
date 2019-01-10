@@ -18,13 +18,15 @@ class ImageProcessing(Thread):
     histAverage = None
     average = None
     history = None
-    
-    def __init__(self, history,h,w):
+    learningMode = False
+
+    def __init__(self, history,h,w, learningActive):
         self.history = history
         self.valBuff = collections.deque(history*[0])
         self.h = h
         self.w = w
-        self.imgThread = ImageAcquisition((h,w),60)        
+        self.learningMode = learningActive
+        self.imgThread = ImageAcquisition((h,w),60, learningActive)        
         super(ImageProcessing,self).__init__()
     
     def getAverageAngleInstant(self):
@@ -43,18 +45,19 @@ class ImageProcessing(Thread):
         time.sleep(0.5)
         while self.running:
             frameTime = time.time()
-            image = self.imgThread.getLastImage()
+            if self.learningMode == False:
+                image = self.imgThread.getLastImage()
 
             #neural network function goes here
             #it should return the angle required for steering
             #and a value for throttle
             #self.showImage("Frame",image)
-            print(image)
+                print(image)
             #The below line should record what the camera sees as a video file
 
-            frameTime = time.time() - frameTime
-            frameTime = 1/frameTime
-            print("FPS: " + str(frameTime))
+                frameTime = time.time() - frameTime
+                frameTime = 1/frameTime
+                print("FPS: " + str(frameTime))
     def stop(self):
         self.running = False
 
