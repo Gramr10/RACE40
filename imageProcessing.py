@@ -43,13 +43,13 @@ class ImageProcessing(Thread):
         time.sleep(0.5)
         while self.running:
             frameTime = time.time()
-            #image = self.imgThread.getLastImage() #uncommment this one
+            image = self.imgThread.getLastImage()
 
             #neural network function goes here
             #it should return the angle required for steering
             #and a value for throttle
             #self.showImage("Frame",image)
-            #print(image) #uncomment this one
+            print(image)
             #The below line should record what the camera sees as a video file
 
             frameTime = time.time() - frameTime
