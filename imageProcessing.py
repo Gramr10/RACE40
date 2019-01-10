@@ -26,7 +26,7 @@ class ImageProcessing(Thread):
         self.h = h
         self.w = w
         self.learningMode = learningActive
-        self.imgThread = ImageAcquisition((h,w),60, learningActive)        
+        self.imgThread = ImageAcquisition((h,w),80, learningActive)        
         super(ImageProcessing,self).__init__()
     
     def getAverageAngleInstant(self):

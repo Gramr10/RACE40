@@ -5,15 +5,16 @@ from picamera import PiCamera
 from picamera.array import PiRGBArray
 import traceback
 import cv2
+import io
 
 class ImageAcquisition(Thread):
     lastImage = None
-    #imageWriteLock = False
     theta=0
     camera = PiCamera()
     rawCapture = None
     done = False
     learningMode = False
+    outputs = [io.BytesIO() for i in range(40)]
 
     def __init__(self,res,framerate,learningActive):
        
@@ -21,6 +22,7 @@ class ImageAcquisition(Thread):
         self.camera.resolution = res
         self.camera.framerate = framerate
         self.rawCapture = PiRGBArray(self.camera, size=res)
+        self.camera.shutter_speed = 400 #Under_Test: Delete or make this configurable within the controlLoop main module. Currently testing @ 400 microseconds, to increase the FPS.
         super(ImageAcquisition,self).__init__()
 
     def run(self):
@@ -28,77 +30,27 @@ class ImageAcquisition(Thread):
         try:
             #This case shall be used for neural network learning -> shall store images at the specified location, as long as in this mode.
             if self.learningMode == True:
-                for i, frame in enumerate(self.camera.capture_continuous('cameraCapture/' + '{timestamp}.jpg',format='jpeg', use_video_port=True)):
-                    if self.done is True:
-                        break;
-                    pass
+                #Because it takes too much time to store the images from RAM to ROM (huge bottleneck), this mode will have to store the images strictly in RAM while another process will store the images in ROM concurrently.
+                start = time.time()
+                self.camera.capture_sequence(self.outputs, format='jpeg', use_video_port=True)
+                finish = time.time()
+                self.camera.close()
+                print('Captured 40 images at %.2ffps' % (40/(finish-start))) #Delete this line when parallel storing process has been implemented. Currently, can take over 40 FPS, in stream (RAM).
             #This case shall be used for online imageProcessing, that will decide when to steer and when to accelerate.
-            if self.learningMode == False:        
+            if self.learningMode == False:
                 for frame in self.camera.capture_continuous(self.rawCapture,format='bgr', use_video_port=True):
-                    #while self.imageWriteLock is True:
-                        #pass
-                    #self.imageWriteLock = True
-                    #print("in continuous capture")
                     self.lastImage = frame.array
-                    #self.imageWriteLock = False
                     self.rawCapture.truncate(0)
                     if self.done is True:
                         break;
                 
         except:
             print(traceback.format_exc())
-            #cv2.imshow("crashed on image",self.lastImage)
             self.stop()
 
     def stop(self):
         self.done = True
+        self.camera.close()
         
     def getLastImage(self):
-        #while self.imageWriteLock is True:
-        #    pass
         return self.lastImage
-
-#This second Thread is created in order to run on a second processor. We will want to invoke the multiprocessing mechanism to assign this Thread to any other processor, in order to solve
-#the issue where the camera would be slowed down by any other processing (thus not be able to take as many camera captures as the camera allows physically)
-#class recordToLearn(Thread):
-#
-#    #To-Do: Where should this thread by invoked? Within the controlLoop module, or within imageProcessing?
-#    #To-Do: How should this thread receive the init_learn parameter? Would it receive via controlLoop?
-#
-#    camera = PiCamera()
-#
-#    def __init__(self, init_learn):
-#        self.init_learn = init_learn
-#        self.camera.resolution = res
-#        self.camera.framerate = framerate
-#        super(recordToLearn,self).__init__()
-#        
-#    def run(self):
-#        if self.init_learn == True:
-#            try:
-#                for i, frame in enumerate(self.camera.capture_continuous('cameraCapture/' + '{i}.jpg', format='jpeg', use_video_port=True)):
-#                    if self.init_learn is False:
-#                        break;
-#                    
-#            except:
-#                print(traceback.format_exc())
-#                self.stop()
-#
-#    def stop(self):
-#        self.init_learn = False
-
-
-#This is the function variant of the Thread from above
-def recordToLearn(init_learn):
-    camera = PiCamera()
-    if init_learn == True:
-        camera.resolution = (640,480)
-        camera.framerate = 80
-        try:
-            for i, frame in enumerate(camera.capture_continuous('cameraCapture/' + '{i}.jpg', format='jpeg', use_video_port=True)):
-                print('Testing')
-                if init_learn is False:
-                    break;
-                
-        except:
-            print(traceback.format_exc())
