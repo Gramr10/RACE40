@@ -3,7 +3,6 @@ from carControl import CarControl
 from imageProcessing import ImageProcessing
 from os import system
 import traceback
-from multiprocessing import Process
 
 learningMode = True #This variable should come from the Android Application.
 
